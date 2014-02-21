@@ -1,9 +1,14 @@
-Usage: python OnlyPGPplz.py email@something.com
+Usage: 
+=======
 
-You can set your favorite log location.
+    python OnlyPGPplz.py email@something.com
+
+You can set your favorite log location, and set other parameters in the source.
+
 
 
 To install:
-
+============
 download package, unzip, and run:
-python setup.py install
+
+    python setup.py install
