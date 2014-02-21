@@ -1,4 +1,9 @@
-onlypgplz
-=========
+Usage: python OnlyPGPplz.py email@something.com
 
-We want ONLY PGP in our mails.
+You can set your favorite log location.
+
+
+To install:
+
+download package, unzip, and run:
+python setup.py install
