@@ -10,42 +10,37 @@ import logging
 import socket
 import ssl
 
-# PLZ DO NOT SEND UNENCRYPTED MAIL TO YOURSELF.
-# Otherwise you will end up in a quantum-atomic-loop and google -> and we, will experience sudden death.
 
-
-# the flag stored in gmail for flagging the last checked mail
-# Process Recidive Checking for Decryption, or porcodio. Now I don't remember.
 flag = "PRCD"
 
 subject = "OOPS: email without PGP sent :("
 
-# where do i need to look for the certification authority lists? this is SO dependent 
-# (of course, linuxES sucks)
-cacertList="/etc/ssl/certs/ca-certificates.crt"
+# where do i need to look for the certification authority lists? this is SO
+# dependent
+cacertList = "/etc/ssl/certs/ca-certificates.crt"
 
-# this var, that I should properly have called "wait_seconds" is the frequency of checking again the mail times after times
-howMuchdoIsleep_5hourADay=120
+# this var, that I should properly have called "wait_seconds" is the frequency
+#  of checking again the mail times after times
+howMuchdoIsleep_5hourADay = 120
 
 # where do i store the superfreaking important log of this megasoftware?
-whereDoILog="onlyPGP.log"
+whereDoILog = "onlyPGP.log"
 
 # thie is the body of the mail we send back
-sendBackTXT= """
+sendBackTXT = """
 Good morning:
 This is an automated message, therefore you must NOT answer.
 
-Here are the bad news:
-If you are reading this message it's because you sent an unencrypted email to me. 
-Since this email is not encrypted,  I'm gooing NOT going to answer, and IT IS NOT guaranteed that this email is gonna be read at all. 
-At least, not by me. :)  
-This recepient does not accept anymore unencrypted email, and therefore you are encouraged to send this message again using PGP.
-I'm really sorry for the problems I may have caused.
+If you are reading this message it's because you sent an unencrypted email to
+me. Since this email is not encrypted,  I'm going NOT going to answer, and
+IT IS NOT guaranteed that this email is gonna be read at all.
+At least, not by me. :)  This recipient does not accept unencrypted
+email anymore, and therefore you are encouraged to send only encrypted
+messages with PGP.
 
-But here are the good news: 
-It EASY to set up a PGP client for your daily usage, and it will protect YOUR PRIVACY.
+It easy to set up a PGP client for your daily usage, and it will protect YOUR
+PRIVACY.
 
-Here you can find my public key. It s strongly suggested that you check (using another channel, such as voice or telephone) wh ether the signature of this key is correct.
 
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.14 (GNU/Linux)
@@ -84,7 +79,6 @@ The universe believes in encryption ~ Assange.
 
 Alessandro Luongo"""
 
-
 logger = logging.getLogger()
 # in normal operation mode, set this to INFO, or WHATEVER.
 logger.setLevel(logging.INFO)
@@ -96,47 +90,54 @@ logger.addHandler(fh)
 
 # stuff for preserving the logger handler instance when this sw becomes a demon
 context = daemon.DaemonContext(
-   files_preserve = [
-         fh.stream,
-            ],
-            )
+    files_preserve=[
+        fh.stream,
+    ],
+)
 
 
-
-# \cite PLZZZZ 
-
-# http://superuser.com/questions/97201/how-to-save-a-remote-server-ssl-certificate-locally-as-a-file
-# http://stackoverflow.com/questions/7885785/using-openssl-to-get-the-certificate-from-a-server
-# http://stackoverflow.com/questions/11884704/how-to-set-find-the-ca-certs-argument-in-python-ssl-wrap-socket
-# http://stackoverflow.com/questions/9713055/certificate-authority-for-imaplib-and-poplib-python
+# http://superuser.com/questions/97201/\
+# how-to-save-a-remote-server-ssl-certificate-locally-as-a-file
+# http://stackoverflow.com/questions/7885785/using-openssl-to-get-the\
+# -certificate-from-a-server
+# http://stackoverflow.com/questions/11884704/how-to-set-find-the-ca-certs\
+# -argument-in-python-ssl-wrap-socket
+# http://stackoverflow.com/questions/9713055/certificate-authority-for\
+# -imaplib-and-poplib-python
 # http://docs.python.org/2/library/ssl.html
 
 
 class IMAP4_SSL_CA_CHECKER(imaplib.IMAP4_SSL):
-    def open(self, host = 'imap.gmail.com', port = 993, ca_certs = '/etc/ssl/certs/ca-certificates.crt'):
+    def open(self, host='imap.gmail.com', port=993,
+             ca_certs='/etc/ssl/certs/ca-certificates.crt'):
         self.host = host
         self.port = port
         self.sock = socket.create_connection((host, port))
-        self.sslobj = ssl.wrap_socket(self.sock,  cert_reqs =ssl.CERT_REQUIRED  , ca_certs=ca_certs)
+        self.sslobj = ssl.wrap_socket(self.sock, cert_reqs=ssl.CERT_REQUIRED,
+                                      ca_certs=ca_certs)
         self.file = self.sslobj.makefile('rb')
+
 
 def extract_body(payload):
     """
     http://unlogic.co.uk/posts/parsing-email-in-python.html
     """
-    if isinstance(payload,str):
+    if isinstance(payload, str):
         return payload
     else:
-        return '\n'.join([extract_body(part.get_payload()) for part in payload])
+        return '\n'.join([extract_body(part.get_payload())
+                          for part in payload])
+
 
 def sendBack(to, password):
     """
     Just send our default template+key+instruction
     """
-    sender = Username 
+    sender = Username
     receivers = [to]
-    
-    MESSAGE = """\From: %s\nTo: %s\nSubject: %s\n\n%s""" % (sender, ", ".join(receivers), subject, sendBackTXT)
+
+    MESSAGE = """\From: %s\nTo: %s\nSubject: %s\n\n%s""" % (sender,
+                                    ", ".join(receivers), subject, sendBackTXT)
 
     try:
         smtpObj = smtplib.SMTP(host='smtp.gmail.com', port=587)
@@ -145,19 +146,20 @@ def sendBack(to, password):
         smtpObj.login(Username, password)
         smtpObj.sendmail(Username, receivers, MESSAGE)
         smtpObj.quit()
-        logger.info( "Email sent" )
+        logger.info("Email sent")
     except Exception as e:
         logger.debug("Error: unable to send email -> %s" % e)
     return
-    
+
+
 def setFlagLastMail():
     """ Set the last received email with our flag """
-    ids = data[0] # data is a list.
-    id_list = ids.split() # ids is a space separated string
-    latest_email_uid = id_list[-1] # get the latest
-    a,b=mail.uid('STORE', latest_email_uid, 'X-GM-LABELS', "%s" %  flag)
-    logger.info( "Last email %s, has our flag %s" % (latest_email_uid, flag))
-    #logger.debug( "".join([a,b]))
+    ids = data[0]  # data is a list.
+    id_list = ids.split()  # ids is a space separated string
+    latest_email_uid = id_list[-1]  # get the latest
+    a, b = mail.uid('STORE', latest_email_uid, 'X-GM-LABELS', "%s" % flag)
+    logger.info("Last email %s, has our flag %s" % (latest_email_uid, flag))
+    # logger.debug( "".join([a,b]))
     return
 
 
@@ -168,34 +170,33 @@ def checkPGP(uidMail):
     """
     # store the flag of the email (seen vs unseen)
 
+    results, data = mail.uid('fetch', uidMail, '(RFC822)')
+    raw_email = data[0][1]
+    emailOK = email.message_from_string(raw_email)
 
-    results,data=mail.uid('fetch', uidMail,'(RFC822)')
-    raw_email=data[0][1]
-    emailOK=email.message_from_string(raw_email)
-    
-    
-    #since for checking for trace of PGP we must download the email, restore the previous state.
+    # since for checking for trace of PGP we must download the email,
+    # restore the previous state.
     # if stordFlag = unseen, then:
     mail.uid('STORE', uidMail, '-FLAGS', '(\Seen)')
-    
-    
-    payloadString=''
-    #if( emailOK.is_multipart() == False ):
+
+    payloadString = ''
+    # if( emailOK.is_multipart() == False ):
     #    #print "is_multipart is false: ", emailOK.is_multipart()
     #    payloadString=emailOK.get_payload()
-    #if (emailOK.is_multipart() == True):
+    # if (emailOK.is_multipart() == True):
     #    #print "is_multipart is true: ", emailOK.is_multipart()
     #    print "Messeggio"
     #    print emailOK.get_payload()[1]
     #    payloadString=emailOK.get_payload()[1]
     #    print "----"
 
-    payloadString=extract_body(emailOK.get_payload())
+    payloadString = extract_body(emailOK.get_payload())
 
-    match = re.search( r'BEGIN PGP(.*)END PGP', payloadString, re.M|re.DOTALL|re.I)
+    match = re.search(r'BEGIN PGP(.*)END PGP', payloadString, re.M | re.DOTALL |
+                        re.I)
     if (match):
-        logger.info( "Thank God, someone sent encrypted mail")
-        return 0 
+        logger.info("Thank God, someone sent encrypted mail")
+        return 0
     else:
         logger.debug("Nope. let's get mad with %s" % emailOK['From'])
         return emailOK['From']
@@ -204,65 +205,66 @@ def checkPGP(uidMail):
 ############################################################
 ############################################################
 ############################################################
+if __name__ == '__main__':
+    Username = ''
+    Password = ''
+    try:
+        Username = sys.argv[1]
+        print "Prompt the password for you email: ",
+        Password = getpass.getpass()
+    except:
+        print "Usage:  'python onlyPGPplz.py email@account.com'"
 
-Username=''
-Password=''
-try: 
-    Username = sys.argv[1]
-    print "Prompt the password for you email: ",
-    Password = getpass.getpass()
-except:
-    print "Please use python onlyPGPplz.py email@account.com"
+    context.open()
+    logger.debug("Succesfull become a Deamon")
 
-context.open()
-logger.debug( "Succesfull become a Deamon" )
-
-logger.debug("Connecting to your email")
-try:
+    logger.debug("Connecting to your email")
+    try:
         mail = IMAP4_SSL_CA_CHECKER(host='imap.gmail.com', port="993")
-except Exception as e:
-	logger.error("Could not log to imap because %s" %e)
-    #sys.exit()
+    except Exception as e:
+        logger.error("Could not log to imap because %s" % e)
+        # sys.exit()
 
-mail.login(Username, Password)
-mail.list()
-mail.select("inbox")
-logger.debug("Connecting to inbox")
-results,data=mail.uid('search', None, "ALL")
+    mail.login(Username, Password)
+    mail.list()
+    mail.select("inbox")
+    logger.debug("Connecting to inbox")
+    results, data = mail.uid('search', None, "ALL")
 
-logger.info("Setting flag to last email - Start patroling")
-setFlagLastMail()
+    logger.info("Setting flag to last email - Start patroling")
+    setFlagLastMail()
 
-while (True):
-	nuove=[]
-	breakVar=0
-	logger.debug("----------------")
-	results,data=mail.uid('search', None, "ALL")
-	for  x in reversed(data[0].split()):
-		logger.debug("Checking email: %s" % x)
-		t,d=mail.uid('FETCH', x, '(X-GM-LABELS)')    
-		for lab in d:
-			match = re.search(r"%s" % flag, lab, re.M|re.I)
-			if (match):
-				breakVar=1
-				logger.debug("Found flagged email.")
-				#this email has our label, so it's the last one since we checked: i
-				#all the email before this are already checked.
-			else:
-				logger.debug("Found new mail since last time")
-				#this email has been received after our last check.
-				# it's new and therefore must be checked
-				nuove.append(x)
-		if (breakVar==1): break
-           	
-	logger.debug("Checking for PGP signature in new email (%s): " % len(nuove))	
-	for x in nuove:
-		logger.debug("Checking signature in %s" % x)
-		res=checkPGP(x)
-		if (res!=0):
-			sendBack(res,Password)
-	
-	setFlagLastMail()
-	logger.debug("Sleeping...")
-	sleep(howMuchdoIsleep_5hourADay)
+    while (True):
+        nuove = []
+        breakVar = 0
+        logger.debug("----------------")
+        results, data = mail.uid('search', None, "ALL")
+        for x in reversed(data[0].split()):
+            logger.debug("Checking email: %s" % x)
+            t, d = mail.uid('FETCH', x, '(X-GM-LABELS)')
+            for lab in d:
+                match = re.search(r"%s" % flag, lab, re.M | re.I)
+                if (match):
+                    breakVar = 1
+                    logger.debug("Found flagged email.")
+                    # this email has our label, so it's the last one since
+                    # we checked. all the email before this are already
+                    # checked.
+                else:
+                    logger.debug("Found new mail since last time")
+                    # this email has been received after our last check.
+                    # it's new and therefore must be checked
+                    nuove.append(x)
+            if (breakVar == 1): break
 
+        logger.debug("Checking for PGP signature in new email (%s): " %
+                     len(nuove))
+        for x in nuove:
+            logger.debug("Checking signature in %s" % x)
+            res = checkPGP(x)
+            if (res != 0):
+                sendBack(res, Password)
+
+        setFlagLastMail()
+        logger.debug("Sleeping...")
+        sleep(howMuchdoIsleep_5hourADay)
